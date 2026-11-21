@@ -233,3 +233,11 @@ src/ingestion/kaggle.json
 
 # Local MLflow runs and model artifacts
 /mlruns/
+
+# Local DVC cache and remote
+dvc-storage/
+
+# Generated J3 model and drift artifacts
+/models/champion.joblib
+/models/evidently_drift_report.html
+/models/evidently_drift_report.json

@@ -8,6 +8,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn
+from mlflow import MlflowClient
 import numpy as np
 import pandas as pd
 import shap
@@ -134,6 +135,7 @@ def main(target_col: str = "segment") -> Path:
                 model,
                 artifact_path="model",
                 input_example=X_train.head(100),
+                registered_model_name="paniervert_segment_classifier",
             )
 
             if f1_weighted > best_f1:
@@ -155,11 +157,25 @@ def main(target_col: str = "segment") -> Path:
         mlflow.log_param("target_column", target_col)
         mlflow.log_param("features", ",".join(feature_cols))
         mlflow.log_metric("f1_weighted", best_f1)
-        mlflow.sklearn.log_model(
+        model_info = mlflow.sklearn.log_model(
             best_model,
             artifact_path="model",
             input_example=X_train.head(100),
         )
+
+        QUALITY_GATE_F1 = 0.95
+        if best_f1 >= QUALITY_GATE_F1:
+            client = MlflowClient()
+            client.set_registered_model_alias(
+                "paniervert_segment_classifier",
+                "champion",
+                str(model_info.registered_model_version),
+            )
+            mlflow.set_tag("quality_gate", "passed")
+            logging.info("Modèle promu champion : version %s", model_info.registered_model_version)
+        else:
+            mlflow.set_tag("quality_gate", "failed")
+            logging.warning("Quality gate échouée : F1 %.4f < %.4f", best_f1, QUALITY_GATE_F1)
 
         if cm_path.exists():
             mlflow.log_artifact(str(cm_path))

@@ -14,3 +14,12 @@ services:
     ports:
       - "8501:8501"
     command: streamlit run src/dashboard.py --server.address=0.0.0.0 --server.port=8501
+
+  api:
+    build: .
+    container_name: paniervert-api
+    volumes:
+      - ./models:/app/models:ro
+    ports:
+      - "3000:3000"
+    command: bentoml serve src.api.service:SegmentClassifier --host 0.0.0.0 --port 3000

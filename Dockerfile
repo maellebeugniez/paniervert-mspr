@@ -15,6 +15,6 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-EXPOSE 8501
+EXPOSE 3000 8501
 
 CMD ["python", "src/pipeline.py"]

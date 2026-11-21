@@ -1,0 +1,54 @@
+stages:
+  prepare:
+    cmd: .venv/bin/python src/preprocessing/clean_data.py && .venv/bin/python src/preprocessing/merge_data.py && .venv/bin/python src/features/build_features.py && .venv/bin/python src/preprocessing/data_contract.py
+    deps:
+      - src/preprocessing/clean_data.py
+      - src/preprocessing/merge_data.py
+      - src/features/build_features.py
+      - src/preprocessing/data_contract.py
+      - data/raw
+    outs:
+      - data/processed/instacart
+      - data/processed/openfoodfacts
+      - data/processed/rappelconso
+      - data/processed/products_enriched.parquet
+      - data/processed/user_features.parquet
+
+  mine:
+    cmd: .venv/bin/python src/mining/clustering.py && .venv/bin/python src/mining/apriori.py
+    deps:
+      - src/mining/clustering.py
+      - src/mining/apriori.py
+      - data/processed/user_features.parquet
+    outs:
+      - data/processed/gold/segments.parquet
+      - data/processed/gold/association_rules.parquet
+      - models/cluster_profiles.json
+      - models/cluster_centers.csv
+      - models/apriori_rules.json
+
+  model:
+    cmd: .venv/bin/python src/mining/classification.py && .venv/bin/python src/tracking/mlflow_tracking.py
+    deps:
+      - src/mining/classification.py
+      - src/tracking/mlflow_tracking.py
+      - data/processed/gold/segments.parquet
+    outs:
+      - models/champion.joblib
+      - models/confusion_matrix.png
+      - models/shap_summary.png
+    metrics:
+      - models/classification_report.json:
+          cache: false
+
+  reports:
+    cmd: .venv/bin/python src/eda_report.py && .venv/bin/python src/fairness_report.py
+    deps:
+      - src/eda_report.py
+      - src/fairness_report.py
+      - data/processed/gold/user_features.parquet
+      - data/processed/gold/segments.parquet
+      - data/processed/gold/classification_predictions.parquet
+    outs:
+      - models/eda_report.json
+      - models/fairness_report.json

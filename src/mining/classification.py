@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from joblib import dump
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -18,7 +19,11 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from xgboost import XGBClassifier
+
+try:
+    from xgboost import XGBClassifier
+except Exception:
+    XGBClassifier = None
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -160,7 +165,10 @@ def main(target_col: str = "segment") -> Path | None:
             n_jobs=-1,
             random_state=42,
         ),
-        "xgboost": XGBClassifier(
+    }
+
+    if XGBClassifier is not None:
+        candidates["xgboost"] = XGBClassifier(
             n_estimators=150,
             max_depth=6,
             learning_rate=0.1,
@@ -170,8 +178,7 @@ def main(target_col: str = "segment") -> Path | None:
             eval_metric="mlogloss" if len(class_counts) > 2 else "logloss",
             n_jobs=-1,
             random_state=42,
-        ),
-    }
+        )
 
     best_name = ""
     best_model = None
@@ -256,6 +263,15 @@ def main(target_col: str = "segment") -> Path | None:
     report_path = MODELS_DIR / "classification_report.json"
     report_path.write_text(json.dumps(report_payload, indent=2, ensure_ascii=False), encoding="utf-8")
     logging.info("Rapport de classification sauvegardé : %s", report_path)
+
+    # Sauvegarde du meilleur modèle
+    model_path = MODELS_DIR / "champion.joblib"
+    dump({
+        "model": best_model,
+        "features": feature_cols,
+        "label_encoder": label_encoder,
+    }, model_path)
+    logging.info("Modèle champion sauvegardé : %s", model_path)
 
     return preds_path
 
